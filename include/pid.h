@@ -1,5 +1,4 @@
 #ifndef PID_H
-
 #define PID_H
 
 #include <math.h>
@@ -23,6 +22,7 @@ extern "C" {
         int derivative;
         double pid;
         int output;
+        int errorDif;
     };
 
     static struct PID leftMotor = {
@@ -36,7 +36,8 @@ extern "C" {
         .target = 300,
         .sensor = 0,
         .bias = 0,
-        .integral = 0
+        .integral = 0,
+        .errorDif = 0
     };
 
     static struct PID rightMotor = {
@@ -50,7 +51,8 @@ extern "C" {
         .target = 3000,
         .sensor = 0,
         .bias = 0,
-        .integral = 0
+        .integral = 0,
+        .errorDif = 0
     };
 
     static struct PID glLift = {
@@ -64,11 +66,34 @@ extern "C" {
         .target = 3000,
         .sensor = 0,
         .bias = 0,
-        .integral = 0
+        .integral = 0,
+        .errorDif = 0
     };
 
-    static int pidDo(struct PID *this) {
+    static int SinglePid(struct PID *this) {
         this->error = this->target - this->sensor;
+        //this->integral = this->integral + (this->error);
+        this->derivative = (this->error - this->previous_error);
+
+        if(abs(this->error) > 5){
+            //this->integral = this->error/(abs(this->derivative) + 10) + this->integral;
+            this->integral += this->error*exp(-(pow(0.1,2) * pow(this->derivative,2)));
+        }
+
+        else if(-this->derivative > this->error||abs(this->error) <= 5){
+            this->integral = 0;
+        }
+
+        this->pid = (this->Kp) * this->error + (this->Ki) * this->integral + (this->Kd) * this->derivative + this->bias;
+        this->output = (int) this->pid;
+        this->previous_error = this->error;
+        return -this->output;
+    };
+
+    static int DoublePid(struct PID *this, struct PID *that) {
+        this->error = this->target - this->sensor;
+        this->errorDif = this->error - that->error;
+        this->error += this->errorDif;
         //this->integral = this->integral + (this->error);
         this->derivative = (this->error - this->previous_error);
 
